@@ -37,8 +37,9 @@
 //finish  : Sets how the surface of the box reflects light
 //normal  : Sets a bumpiness for the box using the "agate" in-built model
 //rotate : Rotates the box
- box          { <-0.5, -0.5, -0.5>,
-                <0.5, 0.5, 0.5>
+ box          { //<-0.5, -0.5, -0.5>,
+                //<0.5, 0.5, 0.5>
+	            0,1
                 texture {Gold_Metal 
 					     //pigment { checker color Red }
                           finish  { specular 0.6 }

@@ -281,9 +281,11 @@ union{
         difference{cylinder{0,zV*z,rC2}cylinder{-z*0.1,zV*z*1.1,rC}plane{x,0}plane{y,0} translate <xV/2,yV/2,0>}
         difference{cylinder{0,zV*z,rC2}cylinder{-z*0.1,zV*z*1.1,rC}plane{x,0 inverse}plane{y,0 inverse} translate <-xV/2,-yV/2,0>}
         difference{cylinder{0,zV*z,rC2}cylinder{-z*0.1,zV*z*1.1,rC}plane{x,0}plane{y,0 inverse} translate <xV/2,-yV/2,0>}
+		// 170308,top face
         box{0,<xV,eV,zV> translate <-xV/2,yV/2+rC,0>}
         box{0,<xV,eV,zV> translate <-xV/2,yV/2+rC,0> scale <1,-1,1>}
         box{0,<eV,yV,zV> translate <xV/2+rC,-yV/2,0>}
+		// 170308,left face
         box{0,<eV,yV,zV> translate <xV/2+rC,-yV/2,0> scale <-1,1,1>}
         object{USAToday rotate z*45 scale xV/2 rotate y*90 translate <-xV/2-rC-eV*1.01,0,zV/2>}
         
@@ -402,10 +404,10 @@ light_source{-z*1000 color rgb<255,240,200>*2.5/255 rotate x*45 rotate -y*70
 }
 union{
     object{NVM_UT translate -x*2}
-    object{NVM2 translate <-0.8,0,0.1>}
-    object{NVM3}
-    object{NVM4 translate <0.8,0,-0.1>}
-    rotate y*-45
+    //object{NVM2 translate <-0.8,0,0.1>}
+    //object{NVM3}
+    //object{NVM4 translate <0.8,0,-0.1>}
+    rotate <0,1,0>*-45
     translate z*2+x*0.7
 }
 plane{y,0 texture{pigment{White*0.3}finish{ambient 0 diffuse 1}}}

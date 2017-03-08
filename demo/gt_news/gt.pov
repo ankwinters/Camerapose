@@ -90,11 +90,13 @@
 	// 170308 add left texture
 	//box{0,<eVM,yVMBox,zVMBox> texture{T_LeftSide} translate <-xVMBox/2,0,0>}  // left
 	box{0,<eVM,yVMBox,zVMBox>  translate <-xVMBox/2,0,0>}  // left
-	#declare left = box{0,1 texture{T_LeftSide} translate <-xVMBox/2,0,0> scale <213,142,1>/213}  // left
-    object{left rotate z*45 scale eVM/2 rotate y*90 translate <-xVMBox,0,0>}
+	#declare left = box{0,1 texture{T_LeftSide} translate <-0.5,-0.5,0> scale <213,142,1>/213}  // left
+    object{left rotate z*45 scale zVMBox/2 rotate y*90 translate <-xVMBox/2-eVM*1.01,yVMBox/2,zVMBox/2>}
 
 	// 170308 add right texture
-    box{0,<eVM,yVMBox,zVMBox> texture{T_RightSide} translate <-xVMBox/2,0,0> scale <-1,1,1>} // right
+    box{0,<eVM,yVMBox,zVMBox>  translate <-xVMBox/2,0,0> scale <-1,1,1>} // right
+	#declare Right = box{0,1 texture{T_RightSide} translate <0.5,0.5,0> scale <213,142,1>/213}
+    object{Right  scale zVMBox/2 rotate -y*90 translate <xVMBox/2+eVM*1.01,yVMBox/2,0>}	
     box{0,1 translate -x*0.5 scale <xVMBox,eVM,zVMBox> translate y*yVMBox} // top
     union{
         union{                // left upper round corner
@@ -114,7 +116,7 @@
     }
 //*20170308 
 // Back side add texture
-    box{0,1 texture{T_BackSide} translate -x*0.5 scale <xVMBox,yVMBox,eVM> scale <1,1,-1> translate z*(zVMBox-eVM)}
+    box{0,1  translate -x*0.5 scale <xVMBox,yVMBox,eVM> scale <1,1,-1> translate z*(zVMBox-eVM)}
 }
 #local xVMFront=xVMBox*xVMBox/(xVMBox+3*eVM);
 //#warning concat(str(xVMBox+3*eVM,0,3),"\n")
@@ -459,10 +461,10 @@ union{
 object{ AxisXYZ( 3.25, 2.2, 8, Texture_A_Dark, Texture_A_Light)}
 //-------------------------------------------------- end of coordinate axes
 camera{
-    location  <0.0, 1.8, -6>
-    direction 3*z
-	//location <0.0, -1.8, 6>
-	//direction 3*z
+    //location  <0.0, 1.8, -6>
+    //direction 3*z
+	location <3.0, 1.8,10>
+	direction 3*z
     right     4*x/3
     look_at   <0.0, 0.8, 0.0>
 }
