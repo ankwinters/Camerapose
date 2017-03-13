@@ -91,13 +91,13 @@
 	//box{0,<eVM,yVMBox,zVMBox> texture{T_LeftSide} translate <-xVMBox/2,0,0>}  // left
 	box{0,<eVM,yVMBox,zVMBox>  translate <-xVMBox/2,0,0>}  // left
 	#declare left = box{0,1 texture{T_LeftSide} translate <-0.5,-0.5,0> }  // left
-    object{left scale <zVMBox,yVMBox,eVM/2> rotate y*90 translate <-xVMBox/2-eVM*1.01,yVMBox/2,zVMBox/2>}
+    object{left scale <zVMBox,yVMBox,eVM/2> rotate y*90 translate <-xVMBox/2-eVM*1.001,yVMBox/2,zVMBox/2>}
 
 	// 170308 add right texture
     //box{0,<eVM,yVMBox,zVMBox> texture{T_RightSide} translate <-xVMBox/2,0,0> scale <-1,1,1>} // right
 	box{0,<eVM,yVMBox,zVMBox> translate <-xVMBox/2,0,0> scale <-1,1,1>} //right
 	#declare Right = box{0,1 texture{T_RightSide} translate <0,-0.5,0>} //scale <213,142,1>/213}
-    object{Right  scale <zVMBox,yVMBox,eVM/2> rotate -y*90 translate <xVMBox/2+eVM*1.01,yVMBox/2,0>}	
+    object{Right  scale <zVMBox,yVMBox,eVM/2> rotate -y*90 translate <xVMBox/2+eVM*1.001,yVMBox/2,0>}	
     box{0,1 translate -x*0.5 scale <xVMBox,eVM,zVMBox> translate y*yVMBox} // top
     union{
         union{                // left upper round corner
@@ -218,7 +218,8 @@ union{
 #include "colors.inc"
 
 #declare xVMBox=0.5;
-#declare yVMBox=xVMBox*3/1.4;
+//#declare yVMBox=xVMBox*3/1.4;
+#declare yVMBox=1.0;
 #declare zVMBox=0.5;
 #declare yrtVMBox=0.6;
 #declare eVM=0.005;
@@ -488,11 +489,11 @@ light_source{-z*1000 color rgb<255,240,200>*2.5/255 rotate x*45 rotate -y*70
 }
 union{
     //object{NVM_UT translate -x*2}
-    object{NVM2 translate <-0.8,0,0.1>}
+    object{NVM2 translate <0,0,-0.25>}
     //object{NVM3}
     //object{NVM4 translate <0.8,0,-0.1>}
-    rotate y*-45
-    translate z*2+x*0.7
+    //rotate y*-45
+    //translate z*2+x*0.7
 }
 plane{y,0 texture{pigment{White*0.3}finish{ambient 0 diffuse 1}}}
  
