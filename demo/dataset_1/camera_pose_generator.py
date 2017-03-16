@@ -11,13 +11,15 @@ import random
 import math
 import numpy as np
 import re
+import os
 from quaternion import Quaternion
 
 
 def CamCirclePos(center,r,k=360):
 # This function is an easy pose generator.The output forms as a circle in the plane y=y_center.
 # x^2+z^2=r^2
-# Output: cam[(x1,y,z1),(x2,y,z2),...,(xk,y,zk)] preci=8
+# Output: cam[(x1,y,z1),(x2,y,z2),...,(xk,y,zk)] 
+    preci=8
     random.seed()
     cam=[]
     if k % 2 != 0:
@@ -28,7 +30,7 @@ def CamCirclePos(center,r,k=360):
     for i in range(1,k+1):
         #x = -r+gap*(i-1)+gap*random.random()
         x = -r+gap*(i-1)+gap*1
-        y = 0
+        y = center[1]
         z = math.sqrt(r*r-x*x)
         #print((x,y,z))
         cam.append((round(x,preci),round(y,preci),round(z,preci)))
@@ -39,7 +41,7 @@ def CamCirclePos(center,r,k=360):
 def CamSpherePos(center,r,k):
     pass
 
-def DeterminRight(loc,look_at):
+def DeterminRight(loc,look_at,as_ratio=4/3):
 # Cam-look_at vector to rotation matrix & translation vector
     vec = np.array(loc)-np.array(look_at)
 # Right vector,make vec.dot(rig)=0
@@ -47,7 +49,7 @@ def DeterminRight(loc,look_at):
 # normalize
     right = rig/np.sqrt(rig.dot(rig))
     #print("vec dot right:",vec," * ", right, vec.dot(right))
-    return tuple(right)
+    return tuple(as_ratio*right)
 
 def SinglePoseTrans(loc, look_at, right):
 # z-axis:vec = loc-look_at,
@@ -105,10 +107,14 @@ def GenPovFile(template_file, cam_loc, look_at, right, out_file_dir, out_file_na
     with open(output_file, "w") as sources:
         for line in lines:
             write_line = re.sub(r'^(\s+location\s+)(<.*?>)', r'\1'+cam_string, line)  
-            write_line = re.sub(r'^(\s+right\s+)(<.*?>)',r'\1'+right_string, line)
-            write_line = re.sub(r'^(\s+look_at\s+)(<.*?>)',r'\1'+look_string, line)
+            write_line = re.sub(r'^(\s+right\s+)(<.*?>)',r'\1'+right_string, write_line)
+            write_line = re.sub(r'^(\s+look_at\s+)(<.*?>)',r'\1'+look_string, write_line)
             sources.write(write_line)
+    print("Generating file ",output_file)
     
+def PovToPng(pov_path, png_path):
+    os.system("povray -W1024 -H768 +I"+pov_path+" +O"+png_path)
+
 
 def GenOutFiles(template_file,dst_dir):
     ''' 
@@ -119,13 +125,17 @@ def GenOutFiles(template_file,dst_dir):
     file_counts = 360
     distance = 3
     look_at = (0, 0.5, 0)
-    pov_out_dir = "/pov_files"
-    img_out_dir = "/img_files"
+    pov_out_dir = dst_dir+"/pov_files"
+    img_out_dir = dst_dir+"/img_files"
     pose_file = "Camerapose.txt"
 
     cameras = CamCirclePos(look_at, distance, file_counts)
+    count = 0
     for cam in cameras:
         right = DeterminRight(cam, look_at)
+        out_name = '{:06d}'.format(count)+'.pov'
+        GenPovFile(template_file, cam, look_at, right, pov_out_dir, out_name)
+        count+=1
     
 
      
@@ -134,4 +144,5 @@ if __name__=="__main__":
     #cam = CamCircle((0,0,0),2,6)
     #DeterminRight(cam[0],(0,0,0))
     #SinglePoseTrans((0,0,1),(0,0,0),(0.707,0.707,0))
-    GenPovFile( "/tmp/gt.pov", (0,1,1), (3,4,5), (9,10,11),"/tmp","1.pov")
+    #GenPovFile( "/tmp/gt.pov", (0,1,1), (3,4,5), (9,10,11),"/tmp","1.pov")
+    GenOutFiles("./gt.pov","./mono3m")
