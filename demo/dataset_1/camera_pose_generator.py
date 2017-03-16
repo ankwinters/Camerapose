@@ -41,15 +41,19 @@ def CamCirclePos(center,r,k=360):
 def CamSpherePos(center,r,k):
     pass
 
-def DeterminRight(loc,look_at,as_ratio=4/3):
+def DeterminUpRight(loc,look_at,ratio=(4,3)):
 # Cam-look_at vector to rotation matrix & translation vector
     vec = np.array(loc)-np.array(look_at)
 # Right vector,make vec.dot(rig)=0
-    rig = np.array((-vec[(2)],0,vec[(0)]))
+    rig_vec = np.array((-vec[(2)],0,vec[(0)]))
 # normalize
-    right = rig/np.sqrt(rig.dot(rig))
+    right = rig_vec/np.sqrt(rig_vec.dot(rig_vec))
     #print("vec dot right:",vec," * ", right, vec.dot(right))
-    return tuple(as_ratio*right)
+    up_vec = -np.cross(vec,right)
+    up = up_vec/np.sqrt(up_vec.dot(up_vec))
+
+# default film size: 4mm*3mm
+    return tuple(up*int(ratio[1])/1000),tuple(right*int(ratio[0])/1000)
 
 def SinglePoseTrans(loc, look_at, right):
 # z-axis:vec = loc-look_at,
@@ -90,9 +94,13 @@ def SinglePoseTrans(loc, look_at, right):
     rotate = Quaternion.get_rotation_matrix(q)
     trans = _z
 # Output put R t
-    return np.hstack((rotate,trans))
+    rt = np.column_stack((rotate,trans))
+    return np.reshape(rt,12)
+    
+    #return np.hstack((rotate,trans.transpose()))
 
-def GenPovFile(template_file, cam_loc, look_at, right, out_file_dir, out_file_name):
+def GenPovFile(template_file, cam_loc, look_at, up, right, out_file_dir, out_file_name):
+#TODO: Change "direction" line
     output_file = out_file_dir+"/"+out_file_name
 
     def write_to_string(loc):
@@ -100,6 +108,7 @@ def GenPovFile(template_file, cam_loc, look_at, right, out_file_dir, out_file_na
 
     cam_string = write_to_string(cam_loc)
     look_string = write_to_string(look_at)
+    up_string = write_to_string(up)
     right_string = write_to_string(right)
 
     with open(template_file, "r") as sources:
@@ -107,13 +116,21 @@ def GenPovFile(template_file, cam_loc, look_at, right, out_file_dir, out_file_na
     with open(output_file, "w") as sources:
         for line in lines:
             write_line = re.sub(r'^(\s+location\s+)(<.*?>)', r'\1'+cam_string, line)  
+            write_line = re.sub(r'^(\s+up\s+)(<.*?>)', r'\1'+up_string, write_line)  
             write_line = re.sub(r'^(\s+right\s+)(<.*?>)',r'\1'+right_string, write_line)
             write_line = re.sub(r'^(\s+look_at\s+)(<.*?>)',r'\1'+look_string, write_line)
             sources.write(write_line)
     print("Generating file ",output_file)
     
-def PovToPng(pov_path, png_path):
-    os.system("povray -W1024 -H768 +I"+pov_path+" +O"+png_path)
+def PovToImg(pov_path, img_path):
+    print("Creating image: ",img_path)
+    os.system("povray -W1024 -H768 +I"+pov_path+" +O"+img_path+" >/dev/null 2>&1")
+
+
+def save_rt_paras(rt_list, out_path):
+    with open(out_path, 'w') as fp: 
+        for rt in rt_list:
+            np.savetxt(fp, rt_list, "%.6f "*12)
 
 
 def GenOutFiles(template_file,dst_dir):
@@ -122,27 +139,35 @@ def GenOutFiles(template_file,dst_dir):
     parameters: generate 360 files where 
     camera is located where is 3m in front of object
     '''
-    file_counts = 360
+    file_counts = 180
     distance = 3
-    look_at = (0, 0.5, 0)
+    look_at = (0, 0.7, 0)
     pov_out_dir = dst_dir+"/pov_files"
     img_out_dir = dst_dir+"/img_files"
-    pose_file = "Camerapose.txt"
+    pose_file = dst_dir+"/Camerapose.txt"
 
     cameras = CamCirclePos(look_at, distance, file_counts)
     count = 0
     for cam in cameras:
-        right = DeterminRight(cam, look_at)
-        out_name = '{:06d}'.format(count)+'.pov'
-        GenPovFile(template_file, cam, look_at, right, pov_out_dir, out_name)
+        up,right = DeterminUpRight(cam, look_at)
+        pov_out_name = '{:06d}'.format(count)+'.pov'
+        img_out_name = '{:06d}'.format(count)+'.png'
+        GenPovFile(template_file, cam, look_at, up, right, pov_out_dir, pov_out_name)
+        #PovToImg(pov_out_dir+"/"+pov_out_name, img_out_dir+"/"+img_out_name)
         count+=1
     
-
      
 
 if __name__=="__main__":
     #cam = CamCircle((0,0,0),2,6)
     #DeterminRight(cam[0],(0,0,0))
-    #SinglePoseTrans((0,0,1),(0,0,0),(0.707,0.707,0))
-    #GenPovFile( "/tmp/gt.pov", (0,1,1), (3,4,5), (9,10,11),"/tmp","1.pov")
-    GenOutFiles("./gt.pov","./mono3m")
+    pose = SinglePoseTrans((0,0,1),(0,0,0),(0.707,0.707,0))
+    new = []
+    for i in range(0,1):
+
+        new.append(pose)
+
+    save_rt_paras(new,"/tmp/list.txt")
+    #GenPovFile( "/tmp/gt.pov", (0,1,1), (3,4,5), (7,8,9), (9,10,11),"/tmp","1.pov")
+    #PovToImg("/tmp/1.pov","/tmp/1.png")
+    #GenOutFiles("./gt.pov","./mono3m")

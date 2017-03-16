@@ -110,8 +110,8 @@ class Quaternion:
         [      2(xy + wz)     1 - 2(xx + zz)         2(yz - wx)  ]
         [      2(xz - wy)        2(yz + wx)     1 - 2(xx + yy) ]
         """
-        return np.array([ [1-2*(yy+zz),2*(xy-wz),2*(xz+wy)],
-                          [2*(xy+wz),1-2*(xx+zz),2*(yz-wx)],
-                          [2*(xz-wy),2*(yz+wx),1-2*(xx+yy)] ]
+        return np.array([ (1-2*(yy+zz),2*(xy-wz),2*(xz+wy)),
+                          (2*(xy+wz),1-2*(xx+zz),2*(yz-wx)),
+                          (2*(xz-wy),2*(yz+wx),1-2*(xx+yy)) ]
                           )
 
