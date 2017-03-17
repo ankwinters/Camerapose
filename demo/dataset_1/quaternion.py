@@ -19,7 +19,7 @@ class Quaternion:
         v = normalize(v)
 
 
-        print("v:",v,"theta:",theta)
+        #print("v:",v,"theta:",theta)
         new_quaternion = Quaternion()
         new_quaternion._axisangle_to_q(theta, v)
         return new_quaternion
