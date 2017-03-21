@@ -5,8 +5,8 @@ Input:(x,y,z),r,k
 Output:1.pov,2.pov,3.pov,...,k.pov
        Camarapose.txt 
 By default: right-handed
-
 """
+
 import random
 import math
 import numpy as np
@@ -34,7 +34,7 @@ def CamCirclePos(center,r,count=360):
         #y = center[1]
         z = -r+gap*(i-1)+gap*random.random()
         y = center[1]
-        print("z:",z)
+        #print("z:",z)
         x = math.sqrt(r*r-z*z)
         cam.append((round(x,preci),round(y,preci),round(z,preci)))
 
@@ -49,42 +49,54 @@ def CamCirclePos(center,r,count=360):
 def CamSpherePos(center,r,k):
     pass
 
+def hand_trans(_loc):
+    # TODO: We make it be the intermediate
+
+    return np.array((_loc[0],_loc[1],-_loc[2]))
+
 def DeterminUpRight(loc,look_at,ratio=(4,3)):
+# It's based on left-handed coordinate system.
+# So it's need to be transformed after calculation in right-handed coordinates
 # Cam-look_at vector to rotation matrix & translation vector
-    vec = np.array(loc)-np.array(look_at)
+    vec = hand_trans(np.array(loc)-np.array(look_at))
 # Right vector,make vec.dot(rig)=0
     #rig_vec = np.array((-vec[(2)],0,vec[(0)]))
     world_up = np.array((0,1,0))
     if np.linalg.norm(vec)==0:
         print("error")
         exit(-1)
-    rig_vec = np.cross(vec,world_up)
+    rig_vec = np.cross(world_up,vec)
 # normalize
     right = rig_vec/np.sqrt(rig_vec.dot(rig_vec))
-    #print("vec dot right:",vec," * ", right, vec.dot(right))
-    up_vec = -np.cross(vec,right)
+    up_vec = np.cross(vec,right)
     up = up_vec/np.sqrt(up_vec.dot(up_vec))
 # default film size: 4mm*3mm
-    return tuple(up*int(ratio[1])/1000),tuple(right*int(ratio[0])/1000)
+    #print("In right-handed system, vec:",vec," right:", right, " up:",up)
+    return tuple(hand_trans(up)*int(ratio[1])/1000),tuple(hand_trans(right)*int(ratio[0])/1000)
 
 def DeterminDirect(cam,look_at):
     pass
 
 
 def SinglePoseTrans(loc, look_at, right):
+# It's based on right-handed coordinate system.
 # z-axis:vec = loc-look_at,
 # x-axis:right,vector
 # Now it's time for y-axis  
     if loc==look_at:
         return "error"
-    _z = np.array(loc)-np.array(look_at)
-    _x = np.array(right)
+    #_z = np.array(loc)-np.array(look_at)
+    _z = hand_trans(np.array(loc)-np.array(look_at))
+    _x = np.array(hand_trans(right))
 # Normalize
     cam_z = _z/np.sqrt(_z.dot(_z))
     cam_x = _x/np.sqrt(_x.dot(_x))
+    #print("In right-handed system, cam_z:",cam_z," cam_x:", cam_x)
 # Right-handed
 # Use quaterunion method
     def arccos(cos_theta):
+        if cos_theta>0.999:
+            cos_theta = 1
         return math.degrees(math.acos(cos_theta))
 # Step1: Rotate z to _z, vec(0,0,1)->vec(cam_z)
     theta_z = arccos( np.dot(cam_z,np.array((0,0,1))) )
@@ -95,12 +107,15 @@ def SinglePoseTrans(loc, look_at, right):
     qz = Quaternion.from_axisangle(theta_z,rot_axis_z)
     print("theta_z",theta_z," rot_axis_z",rot_axis_z," qz",qz)
 # Step2: Rotate x to _x,vec(1,0,0)-> Rz*vec(cam_x)
-    cam_x_qz = qz*cam_x
-    theta_x = arccos( np.dot(cam_x_qz, np.array((1,0,0))) )
+    #cam_x_qz = qz*cam_x
+    #print("camx:",cam_x," cam_x_qz:",cam_x_qz)
+    world_x_qz = qz*np.array((1,0,0))
+    print("world_x_qz",world_x_qz,"np.dot:",np.dot(cam_x,world_x_qz))
+    theta_x = arccos( np.dot(cam_x, world_x_qz) )
     # if theta_x =180.0,then the axis would be y or z
     rot_axis_x = np.array((0,1,0))
     if theta_x < 180.0 and theta_x > 0.01:
-        rot_axis_x = np.cross(np.array((1,0,0)), cam_x_qz) 
+        rot_axis_x = np.cross(world_x_qz,cam_x) 
     qx = Quaternion.from_axisangle(theta_x,rot_axis_x)
     print("theta_x",theta_x," rot_axis_x",rot_axis_x," qx",qx)
 # Step3: Combine qz & qx
@@ -143,7 +158,7 @@ def GenPovFile(template_file, cam_loc, direction, look_at, up, right, out_file_d
     
 def PovToImg(pov_path, img_path):
     print("Creating image: ",img_path)
-    os.system("povray -W1024 -H768 +I"+pov_path+" +O"+img_path+" >/dev/null 2>&1")
+    os.system("povray -W2560 -H1920 -D +I"+pov_path+" +O"+img_path+" >/dev/null 2>&1")
 
 
 def save_rt_paras(rt_list, out_path):
@@ -152,13 +167,13 @@ def save_rt_paras(rt_list, out_path):
             np.savetxt(fp, rt, "%f "*12)
 
 
-def GenOutFiles(template_file,dst_dir):
+def GenOutFiles(template_file,dst_dir,file_counts=360):
     ''' 
     Input: /path/to/template.pov, output_directory(e.g.: /tmp/dataset)
     parameters: generate 360 files where 
     camera is located where is 3m in front of object
     '''
-    file_counts = 30
+    #file_counts = 4
     distance = 3
     look_at = (0, 0.7, 0)
     direc_pos = (0, 0, 0.005)
@@ -193,7 +208,6 @@ def ClearFiles(dst_dir):
     os.system("rm -f "+pov_out_dir+"/*.pov")
     os.system("rm -f "+img_out_dir+"/*.png")
     os.system("rm "+ pose_file)
-
 
 
 if __name__=="__main__":
