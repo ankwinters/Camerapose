@@ -23,7 +23,7 @@ def CamCirclePos(center,r,count=360):
     random.seed()
     cam=[]
     if count  % 2 != 0:
-        print("Error input k:", k)
+        print("Error input count:", count)
         exit(-1)
 # Determine the average gap between two sequence x-coordinates
     k = count//2
@@ -104,7 +104,8 @@ def SinglePoseTrans(loc, look_at, right):
     rot_axis_z = np.array((1,0,0))
     if theta_z < 180.0 and theta_z > 0.01:
         rot_axis_z = np.cross(np.array((0,0,1)),cam_z)
-    qz = Quaternion.from_axisangle(theta_z,rot_axis_z)
+    # world_coordnate ->(0,0,1)(camera coordinate)
+    qz = Quaternion.from_axisangle(-theta_z,rot_axis_z)
     print("theta_z",theta_z," rot_axis_z",rot_axis_z," qz",qz)
 # Step2: Rotate x to _x,vec(1,0,0)-> Rz*vec(cam_x)
     #cam_x_qz = qz*cam_x
@@ -116,14 +117,16 @@ def SinglePoseTrans(loc, look_at, right):
     rot_axis_x = np.array((0,1,0))
     if theta_x < 180.0 and theta_x > 0.01:
         rot_axis_x = np.cross(world_x_qz,cam_x) 
-    qx = Quaternion.from_axisangle(theta_x,rot_axis_x)
+    # world_coordnate ->(1,0,0)(camera coordinate)
+    qx = Quaternion.from_axisangle(-theta_x,rot_axis_x)
     print("theta_x",theta_x," rot_axis_x",rot_axis_x," qx",qx)
 # Step3: Combine qz & qx
     q = qz*qx
     #print(q)
     #print(Quaternion.get_rotation_matrix(q))
     rotate = Quaternion.get_rotation_matrix(q)
-    trans = _z
+    # world_coordnate ->(0,0,0)(camera coordinate)
+    trans = -_z
 # Output put R t
     rt = np.column_stack((rotate,trans))
     return np.reshape(rt,(1,12))
@@ -156,9 +159,14 @@ def GenPovFile(template_file, cam_loc, direction, look_at, up, right, out_file_d
             sources.write(write_line)
     print("Generating file ",output_file)
     
-def PovToImg(pov_path, img_path):
+def PovToImg(pov_path, img_path,wid=2560,hei=1920):
     print("Creating image: ",img_path)
-    os.system("povray -W2560 -H1920 -D +I"+pov_path+" +O"+img_path+" >/dev/null 2>&1")
+    if wid/hei ==4/3:
+        size = "-W"+str(wid)+" -H"+str(hei)
+    else:
+        print("Warning:size fallback to default:2560*1920")
+        size = "-W2560 -H1920"
+    os.system("povray "+size+" -D +I"+pov_path+" +O"+img_path+" >/dev/null 2>&1")
 
 
 def save_rt_paras(rt_list, out_path):
@@ -167,17 +175,17 @@ def save_rt_paras(rt_list, out_path):
             np.savetxt(fp, rt, "%f "*12)
 
 
-def GenOutFiles(template_file,dst_dir,file_counts=360):
+def GenCircleFiles(template_file,dst_dir,file_counts=360,distance=3,look_at=(0, 0.7, 0),focal_len=0.005):
     ''' 
     Input: /path/to/template.pov, output_directory(e.g.: /tmp/dataset)
     parameters: generate 360 files where 
     camera is located where is 3m in front of object
     '''
     #file_counts = 4
-    distance = 3
-    look_at = (0, 0.7, 0)
-    direc_pos = (0, 0, 0.005)
-    direc_neg = (0, 0, -0.005)
+    #distance = 3
+    #look_at = (0, 0.7, 0)
+    direc_pos = (0, 0, focal_len)
+    direc_neg = (0, 0, focal_len)
     pov_out_dir = dst_dir+"/pov_files"
     img_out_dir = dst_dir+"/img_files"
     pose_file = dst_dir+"/Camerapose.txt"
@@ -209,6 +217,9 @@ def ClearFiles(dst_dir):
     os.system("rm -f "+img_out_dir+"/*.png")
     os.system("rm "+ pose_file)
 
+def sfm(base_dir):
+    os.system("/home/lab/workspace/mve-dev/apps/makescene/makescene -i "+base_dir+"/img_files "+base_dir+"/scene")
+    os.system("/home/lab/workspace/mve-dev/apps/sfmrecon/sfmrecon "+base_dir+"/scene")
 
 if __name__=="__main__":
     #cam = CamCircle((0,0,0),2,6)
@@ -219,5 +230,8 @@ if __name__=="__main__":
     #save_rt_paras(new,"/tmp/list.txt")
     #GenPovFile( "/tmp/gt.pov", (0,1,1), (3,4,5), (7,8,9), (9,10,11),"/tmp","1.pov")
     #PovToImg("/tmp/1.pov","/tmp/1.png")
-    ClearFiles("./mono3m")
-    GenOutFiles("./gt.pov","./mono3m")
+    for i in range(11,21):
+        focal = 5*(i+1)//2-10
+        ClearFiles("./mono3m")
+        GenCircleFiles("./gt.pov","./mono3m",file_counts=360,distance=i,look_at=(0, 0.7, 0),focal_len=focal/1000)
+        os.system("cp -r ./mono3m ../../mve_result/gt_%2dm" % i)
