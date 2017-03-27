@@ -15,11 +15,14 @@ import os
 from quaternion import Quaternion
 
 
-def CamCirclePos(center,r,count=360):
+def hand_trans(_loc):
+    # TODO: We make it be the intermediate
+    return np.array((_loc[0],_loc[1],-_loc[2]))
+
+def CamCirclePos(center,r,count=360,preci=8):
 # This function is an easy pose generator.The output forms as a circle in the plane y=y_center.
 # x^2+z^2=r^2
 # Output: cam[(x1,y,z1),(x2,y,z2),...,(xk,y,zk)] 
-    preci=8
     random.seed()
     cam=[]
     if count  % 2 != 0:
@@ -46,13 +49,26 @@ def CamCirclePos(center,r,count=360):
     
     return cam
 
-def CamSpherePos(center,r,k):
-    pass
+def CamRandomPos(center,r,count=1,preci=8):
+# use parameterized (x,y,z) in right-handed system
+# change order
+# z = x0+r*cos\theta*sin\phi
+# x = y0+r*sin\theta*sin\phi
+# y = z0+r*cos\phi
+# 0<theta<2*pi,0<phi<pi
+    cam=[]
+    random.seed()
+    for i in range(0,count):
+        theta = random.random()*math.pi*2
+# TODO: You need to make a better model.At present,phi is between pi/6 & 5*pi/6
+        #phi = random.random()*math.pi
+        phi = (random.random()*0.5+1/18)*math.pi
+        z = center[0]+r*math.cos(theta)*math.sin(phi)
+        x = center[1]+r*math.sin(theta)*math.sin(phi)
+        y = center[2]+r*math.cos(phi)
+        cam.append(hand_trans( (round(x,preci),round(y,preci),round(z,preci)) ))
+    return cam
 
-def hand_trans(_loc):
-    # TODO: We make it be the intermediate
-
-    return np.array((_loc[0],_loc[1],-_loc[2]))
 
 def DeterminUpRight(loc,look_at,ratio=(4,3)):
 # It's based on left-handed coordinate system.
@@ -83,11 +99,12 @@ def SinglePoseTrans(loc, look_at, right):
 # z-axis:vec = loc-look_at,
 # x-axis:right,vector
 # Now it's time for y-axis  
-    if loc==look_at:
+# fix:loc & look_at could be np.array
+    if tuple(loc)==tuple(look_at):
         return "error"
     #_z = np.array(loc)-np.array(look_at)
     _z = hand_trans(np.array(loc)-np.array(look_at))
-    _x = np.array(hand_trans(right))
+    _x = hand_trans(np.array(right))
 # Normalize
     cam_z = _z/np.sqrt(_z.dot(_z))
     cam_x = _x/np.sqrt(_x.dot(_x))
@@ -175,26 +192,37 @@ def save_rt_paras(rt_list, out_path):
             np.savetxt(fp, rt, "%f "*12)
 
 
-def GenCircleFiles(template_file,dst_dir,file_counts=360,distance=3,look_at=(0, 0.7, 0),focal_len=0.005):
+def GenCams(template_file,dst_dir, pose_file, pov_dir_name, img_dir_name,flag=0,
+                 file_counts=360,distance=3,look_at=(0, 0.7, 0),focal_len=0.005):
     ''' 
     Input: /path/to/template.pov, output_directory(e.g.: /tmp/dataset)
-    parameters: generate 360 files where 
-    camera is located where is 3m in front of object
+    if flag==0, that means run in circle mode.
+    Besides, run in random mode
+    *circle mode:
+    generate images where 
+    camera is arranged uniformly in a circle with specific paras.
+    *random mode:
+    generate images where 
+    camera is arranged randomly in a sphere with specific paras.
     '''
     #file_counts = 4
     #distance = 3
     #look_at = (0, 0.7, 0)
     direc_pos = (0, 0, focal_len)
-    direc_neg = (0, 0, focal_len)
-    pov_out_dir = dst_dir+"/pov_files"
-    img_out_dir = dst_dir+"/img_files"
-    pose_file = dst_dir+"/Camerapose.txt"
-
-    cameras = CamCirclePos(look_at, distance, file_counts)
+# bug fix: direc neg should be negative
+    direc_neg = (0, 0, -focal_len)
+    pov_out_dir = dst_dir+"/"+pov_dir_name
+    img_out_dir = dst_dir+"/"+img_dir_name
+    pose_file = dst_dir+"/"+pose_file
+    if flag==0:
+        cameras = CamCirclePos(look_at, distance, file_counts)
+    else:
+        cameras = CamRandomPos(look_at, distance, file_counts)
     count = 0
     rt_list = []
     for cam in cameras:
         up,right = DeterminUpRight(cam, look_at)
+        print("cam:",cam," up:",up," right:",right)
         pov_out_name = '{:06d}'.format(count)+'.pov'
         img_out_name = '{:06d}'.format(count)+'.png'
 #TODO: a hack version
@@ -208,30 +236,25 @@ def GenCircleFiles(template_file,dst_dir,file_counts=360,distance=3,look_at=(0, 
         PovToImg(pov_out_dir+"/"+pov_out_name, img_out_dir+"/"+img_out_name)
         count+=1
     save_rt_paras(rt_list, pose_file)
-    
-def ClearFiles(dst_dir):
-    pov_out_dir = dst_dir+"/pov_files"
-    img_out_dir = dst_dir+"/img_files"
-    pose_file = dst_dir+"/Camerapose.txt"
-    os.system("rm -f "+pov_out_dir+"/*.pov")
-    os.system("rm -f "+img_out_dir+"/*.png")
-    os.system("rm "+ pose_file)
 
-def sfm(base_dir):
-    os.system("/home/lab/workspace/mve-dev/apps/makescene/makescene -i "+base_dir+"/img_files "+base_dir+"/scene")
-    os.system("/home/lab/workspace/mve-dev/apps/sfmrecon/sfmrecon "+base_dir+"/scene")
+
+def test():
+    cams = CamRandomPos((0,0.7,0),3,10)
+    print(cams)
+
 
 if __name__=="__main__":
     #cam = CamCircle((0,0,0),2,6)
     #DeterminRight(cam[0],(0,0,0))
     #pose = SinglePoseTrans((0,0,1),(0,0,0),(0.707,0.707,0))
     #new = []
+    test()
 
     #save_rt_paras(new,"/tmp/list.txt")
     #GenPovFile( "/tmp/gt.pov", (0,1,1), (3,4,5), (7,8,9), (9,10,11),"/tmp","1.pov")
     #PovToImg("/tmp/1.pov","/tmp/1.png")
-    for i in range(11,21):
-        focal = 5*(i+1)//2-10
-        ClearFiles("./mono3m")
-        GenCircleFiles("./gt.pov","./mono3m",file_counts=360,distance=i,look_at=(0, 0.7, 0),focal_len=focal/1000)
-        os.system("cp -r ./mono3m ../../mve_result/gt_%2dm" % i)
+    #for i in range(11,20):
+    #    focal = 5*(i+1)//2-10
+    #    ClearFiles("./mono3m")
+    #    GenCircleCams("./gt.pov","./mono3m",file_counts=5,distance=i,look_at=(0, 0.7, 0),focal_len=focal/1000)
+    #    os.system("cp -r ./mono3m ../../mve_result/gt_%2dm" % i)
