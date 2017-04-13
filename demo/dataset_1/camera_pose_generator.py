@@ -109,49 +109,57 @@ def SinglePoseTrans(loc, look_at, right):
         return "error"
 # t_vec+vec_=vec_in_world, _z=t_vec
     #_z = np.array(loc)-np.array(look_at)
-    _z = hand_trans(np.array(loc)-np.array(look_at))
+    _rig_loc = hand_trans( np.array(loc) )
+    _rig_lookat = hand_trans( np.array(look_at) )
+# Camera reverse 
+    _z = _rig_lookat-_rig_loc
     _x = hand_trans(np.array(right))
 # Normalize
     cam_z = _z/np.sqrt(_z.dot(_z))
     cam_x = _x/np.sqrt(_x.dot(_x))
     #print("In right-handed system, cam_z:",cam_z," cam_x:", cam_x)
 # Right-handed
+    print("cam_z:",_rig_loc,"->(0,0,0)")
 # Use quaterunion method
     def arccos(cos_theta):
-        if cos_theta>0.999:
-            cos_theta = 1
+        if cos_theta > 0.9999:
+            cos_theta = 1.0
+        elif cos_theta < -0.9999:
+            cos_theta = -1.0
         return math.degrees(math.acos(cos_theta))
 # Step1: Rotate from z to _z, that is vec(cam_z)(in world) -> (0,0,1)(in cam)
     theta_z = arccos( np.dot(cam_z,np.array((0,0,1))) )
     # if theta_z =180.0 or 0,then the axis would be either x or y
     rot_axis_z = np.array((1,0,0))
-    if theta_z < 180.0 and theta_z > 0.01:
+    if theta_z < 179.99 and theta_z > 0.01:
         rot_axis_z = np.cross(cam_z,np.array((0,0,1)))
+        #rot_axis_z = np.cross(np.array((0,0,1)),cam_z)
     # world_coordnate ->(0,0,1)(camera coordinate)
     qz = Quaternion.from_axisangle(theta_z,rot_axis_z)
-    print("theta_z",theta_z," rot_axis_z",rot_axis_z," qz",qz)
 # Step2: Rotate x to _x,that is vec(cam_z)(in world) -> (1,0,0)(in cam)
     world_x_qz = qz*cam_x
-    #cam_x = np.array((1,0,0))
-    #print("camx:",cam_x," cam_x_qz:",cam_x_qz)
     #world_x_qz = qz*np.array((1,0,0))
-    print("world_x_qz",world_x_qz,"np.dot:",np.dot(cam_x,world_x_qz))
+    #print("world_x_qz:",world_x_qz)
     #theta_x = arccos( np.dot(cam_x, world_x_qz) )
     theta_x = arccos( np.dot(np.array((1,0,0)), world_x_qz) )
     # if theta_x =180.0,then the axis would be y or z
-    rot_axis_x = np.array((0,1,0))
-    if theta_x < 180.0 and theta_x > 0.01:
-        rot_axis_x = np.cross(world_x_qz,np.array((1,0,0))) 
-    # world_coordnate ->(1,0,0)(camera coordinate)
-    qx = Quaternion.from_axisangle(theta_x,rot_axis_x)
-    print("theta_x",theta_x," rot_axis_x",rot_axis_x," qx",qx)
-# Step3: Combine qz & qx
+    rot_axis_x = np.array((0,0,1))
+    #rot_axis_x = np.array((1,0,0))
+    if theta_x < 179.99 and theta_x > 0.01:
+        #rot_axis_x = np.cross(world_x_qz,cam_x) 
+        rot_axis_x = np.cross(np.array((1,0,0)), world_x_qz)
+# Step3: Combine qz & qx,reverse
+    qz = Quaternion.from_axisangle(theta_z,-rot_axis_z)
+    print("theta_z:",theta_z," rot_axis_z:",-rot_axis_z," qz",qz)
+    qx = Quaternion.from_axisangle(theta_x,-rot_axis_x)
+    print("theta_x",theta_x," rot_axis_x",-rot_axis_x," qx",qx)
     q = qz*qx
     #print(q)
     #print(Quaternion.get_rotation_matrix(q))
+# Get rotation matrix
     rotate = Quaternion.get_rotation_matrix(q)
-# bug fix:translation_vector transformation
-    trans = q*(-_z)
+# bug fix2 : trans should not be confused with _z vector
+    trans = _rig_loc
 # Output put R t
     rt = np.column_stack((rotate,trans))
     return np.reshape(rt,(1,12))
@@ -196,7 +204,7 @@ def PovToImg(pov_path, img_path,wid=2560,hei=1920):
 def save_rt_paras(rt_list, out_path):
     with open(out_path, 'wb') as fp: 
         for rt in rt_list:
-            np.savetxt(fp, rt, "%f "*12)
+            np.savetxt(fp, rt, "%f,"*4+";"+"%f,"*4+";"+"%f,"*4)
 
 
 def GenCams(template_file,dst_dir, pose_file, pov_dir_name, img_dir_name,flag=0,
@@ -230,7 +238,7 @@ def GenCams(template_file,dst_dir, pose_file, pov_dir_name, img_dir_name,flag=0,
     cur_dir = os.getcwd()
     for cam in cameras:
         up,right = DeterminUpRight(cam, look_at)
-        print("cam:",cam," up:",up," right:",right)
+        #print("cam:",cam," up:",up," right:",right)
         pov_out_name = '{:06d}'.format(count)+'.pov'
         img_out_name = '{:06d}'.format(count)+'.png'
 #TODO: a hack version
@@ -254,7 +262,7 @@ def test():
 if __name__=="__main__":
     #cam = CamCircle((0,0,0),2,6)
     #DeterminRight(cam[0],(0,0,0))
-    pose = SinglePoseTrans((1,0,-1),(0,0,0),(0.707,0,0.707))
+    pose = SinglePoseTrans((1,0,0),(0,0,0),(0,0,0.707))
     print(pose)
     #new = []
     #test()
